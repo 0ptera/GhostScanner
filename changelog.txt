@@ -1,0 +1,8 @@
+---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+Date: 16.9.2018
+  Features:
+    - read item and tile ghosts from logistic network
+    - read item requests (modules) from logistic network
+    - runtime setting update frequency
+    - runtime setting invert output
