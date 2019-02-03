@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.3.1
+Date: 3.2.2019
+  Bugfixes:
+    - Limit Scan Results is applied against unique entity count instead of sum of entities found across logistic cells
+---------------------------------------------------------------------------------------------------
 Version: 1.3.0
 Date: 3.2.2019
   Features:

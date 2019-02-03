@@ -6,6 +6,7 @@ local Item_count_lookup = {}
 
 local UpdateInterval = settings.global["ghost-scanner_update_interval"].value
 local MaxResults = settings.global["ghost-scanner_max_results"].value
+if MaxResults == 0 then MaxResults = nil end
 local InvertSign = settings.global["ghost-scanner-negative-output"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
@@ -15,6 +16,7 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ghost-scanner_max_results" then
     MaxResults = settings.global["ghost-scanner_max_results"].value
+    if MaxResults == 0 then MaxResults = nil end
   end
   if event.setting == "ghost-scanner-negative-output" then
     InvertSign = settings.global["ghost-scanner-negative-output"].value
@@ -171,18 +173,10 @@ local function get_ghosts_as_signals(logsiticNetwork)
     local pos = cell.owner.position
     local r = cell.construction_radius
     if r > 0 then
-      local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }
-      local entities
+      local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }      
       -- finding each entity by itself is slightly (0.008ms) faster than finding all and selecting later
-      if MaxResults > 0 then
-        entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
-        -- log("found "..tostring(#entities).."/"..tostring(result_limit).." request proxies. remaining results: "..tostring(result_limit - #entities) )
-        result_limit = result_limit - #entities
-      else
-        entities = cell.owner.surface.find_entities_filtered{area=bounds, type="item-request-proxy", force=logsiticNetwork.force}
-        -- log("found "..tostring(#entities).." request proxies." )
-      end
-      
+      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
+      local count_unique_entities = 0
       for _, e in pairs(entities) do
         -- item-request-proxy holds item_requests (modules) for built entities
         local uid = e.proxy_target.unit_number
@@ -190,18 +184,18 @@ local function get_ghosts_as_signals(logsiticNetwork)
           found_entities[uid] = true
           for request_item, count in pairs(e.item_requests) do
             add_signal(request_item, count)
+            count_unique_entities = count_unique_entities + count
           end
         end
       end
-
-      if MaxResults > 0 then
-        entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="entity-ghost", force=logsiticNetwork.force}
-        -- log("found "..tostring(#entities).."/"..tostring(result_limit).." ghosts. remaining results: "..tostring(result_limit - #entities) )
-        result_limit = result_limit - #entities
-      else
-        entities = cell.owner.surface.find_entities_filtered{area=bounds, type="entity-ghost", force=logsiticNetwork.force}
-        -- log("found "..tostring(#entities).." ghosts." )      
+      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." request proxies." ) 
+      if MaxResults then         
+        result_limit = result_limit - count_unique_entities
+        if result_limit <= 0 then break end
       end
+
+      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="entity-ghost", force=logsiticNetwork.force}
+      local count_unique_entities = 0
       for _, e in pairs(entities) do
         -- entity-ghost knows items_to_place_this and item_requests (modules)
         local uid = e.unit_number
@@ -213,22 +207,23 @@ local function get_ghosts_as_signals(logsiticNetwork)
             local count = Get_items_to_place_count(e.ghost_prototype.name, item_name)
             -- log( tostring(e.ghost_prototype.name)..": "..tostring(item_name)..", "..tostring(count) )
             add_signal(item_name, count)
+            count_unique_entities = count_unique_entities + count
           end
 
           for request_item, count in pairs(e.item_requests) do
             add_signal(request_item, count)
+            count_unique_entities = count_unique_entities + count
           end
         end
       end
-
-      if MaxResults > 0 then
-        entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="tile-ghost", force=logsiticNetwork.force}
-        -- log("found "..tostring(#entities).."/"..tostring(result_limit).." tile ghosts. remaining results: "..tostring(result_limit - #entities) )
-        result_limit = result_limit - #entities
-      else
-        entities = cell.owner.surface.find_entities_filtered{area=bounds, type="tile-ghost", force=logsiticNetwork.force}
-        -- log("found "..tostring(#entities).." tile ghosts." )      
+      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." ghosts." ) 
+      if MaxResults then         
+        result_limit = result_limit - count_unique_entities
+        if result_limit <= 0 then break end
       end
+
+      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="tile-ghost", force=logsiticNetwork.force}
+      local count_unique_entities = 0
       for _, e in pairs(entities) do
         -- tile-ghost knows only items_to_place_this
         local uid = e.unit_number
@@ -240,8 +235,14 @@ local function get_ghosts_as_signals(logsiticNetwork)
             local count = Get_items_to_place_count(e.ghost_prototype.name, item_name)
             -- log( tostring(e.ghost_prototype.name)..": "..tostring(item_name)..", "..tostring(count) )
             add_signal(item_name, count)
+            count_unique_entities = count_unique_entities + count
           end
         end
+      end
+      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." tile-ghosts." ) 
+      if MaxResults then         
+        result_limit = result_limit - count_unique_entities
+        if result_limit <= 0 then break end
       end
 
     end
