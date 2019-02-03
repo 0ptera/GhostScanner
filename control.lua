@@ -1,14 +1,20 @@
 -- constant prototypes names
 local SENSOR = "ghost-scanner"
+local Item_count_lookup = {}
 
 ---- MOD SETTINGS ----
 
 local UpdateInterval = settings.global["ghost-scanner_update_interval"].value
+local MaxResults = settings.global["ghost-scanner_max_results"].value
 local InvertSign = settings.global["ghost-scanner-negative-output"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ghost-scanner_update_interval" then
     UpdateInterval = settings.global["ghost-scanner_update_interval"].value
+    UpdateEventHandlers()
+  end
+  if event.setting == "ghost-scanner_max_results" then
+    MaxResults = settings.global["ghost-scanner_max_results"].value
   end
   if event.setting == "ghost-scanner-negative-output" then
     InvertSign = settings.global["ghost-scanner-negative-output"].value
@@ -17,6 +23,7 @@ end)
 
 
 ---- EVENTS ----
+
 do -- create & remove
 function OnEntityCreated(event)
 	if (event.created_entity.name == SENSOR) then
@@ -31,55 +38,101 @@ function OnEntityCreated(event)
     ghostScanner.entity = entity
     global.GhostScanners[#global.GhostScanners+1] = ghostScanner
 
-    script.on_event(defines.events.on_tick, OnTick)
-    script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, OnEntityRemoved)
+    UpdateEventHandlers()
 	end
+end
+
+function RemoveSensor(id)
+  for i=#global.GhostScanners, 1, -1 do
+    if id == global.GhostScanners[i].ID then
+      table.remove(global.GhostScanners,i)
+    end
+  end
+
+  UpdateEventHandlers()
 end
 
 function OnEntityRemoved(event)
 -- script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
 	if event.entity.name == SENSOR then
-    for i=#global.GhostScanners, 1, -1 do
-      if event.entity.unit_number == global.GhostScanners[i].ID then
-        table.remove(global.GhostScanners,i)
-      end
-    end
-
-		if #global.GhostScanners == 0 then
-			script.on_event(defines.events.on_tick, nil)
-			script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, nil)
-		end
+    RemoveSensor(event.entity.unit_number)
 	end
 end
 end
 
-do -- onTick
-local function UpdateSensor(ghostScanner)
-  -- storing logistic network becomes problematic when roboports run out of energy
-  local logisticNetwork = ghostScanner.entity.surface.find_logistic_network_by_position(ghostScanner.entity.position, ghostScanner.entity.force )
-  if not logisticNetwork then
-    ghostScanner.entity.get_control_behavior().parameters = nil
-    return
-  end
+do -- tick handlers
+function UpdateEventHandlers()
+  -- unsubscribe tick handlers
+  script.on_nth_tick(nil)
+  script.on_event(defines.events.on_tick, nil)
 
-  local signals = Get_Ghost_Requests_as_Signals(logisticNetwork)
-  if not signals then
-    ghostScanner.entity.get_control_behavior().parameters = nil
-    return
+  -- subcribe tick or nth_tick depending on number of scanners
+  local entity_count = #global.GhostScanners
+  if entity_count > 0 then
+    local nth_tick = UpdateInterval / entity_count
+    if nth_tick >= 2 then
+      script.on_nth_tick(math.floor(nth_tick), OnNthTick)
+      -- log("subscribed on_nth_tick = "..math.floor(nth_tick))
+    else
+      script.on_event(defines.events.on_tick, OnTick)
+      -- log("subscribed on_tick")
+    end
+
+    script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, OnEntityRemoved)
+  else  -- all sensors removed
+    script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, nil)
   end
-  ghostScanner.entity.get_control_behavior().parameters = {parameters=signals}
 end
 
+-- runs when #global.GhostScanners > UpdateInterval/2
 function OnTick(event)
   local offset = event.tick % UpdateInterval
   for i=#global.GhostScanners - offset, 1, -1 * UpdateInterval do
+    -- log( event.tick.." updating entity["..i.."]" )
     UpdateSensor(global.GhostScanners[i])
   end
 end
+
+-- runs when #global.GhostScanners <= UpdateInterval/2
+function OnNthTick(NthTickEvent)
+  if global.UpdateIndex > #global.GhostScanners then
+    global.UpdateIndex = 1
+  end
+
+  -- log( NthTickEvent.tick.." updating entity["..global.UpdateIndex.."]" )
+  UpdateSensor(global.GhostScanners[global.UpdateIndex])
+
+  global.UpdateIndex = global.UpdateIndex + 1
 end
 
----- LOGIC ----
-do --create signals from ghosts
+end
+
+
+-- workaround using mineable.result, only works if entity mines the same item used to place
+-- TODO: 0.17 changes items_to_place_this to include count
+function Get_items_to_place_count(entity_name, item_name)
+  Item_count_lookup[entity_name] = Item_count_lookup[entity_name] or {}
+  
+  if Item_count_lookup[entity_name][item_name] then
+    return Item_count_lookup[entity_name][item_name]
+  else
+    local entity = game.entity_prototypes[entity_name]   
+    if entity and entity.mineable_properties and entity.mineable_properties.products then
+      for _, result in pairs(entity.mineable_properties.products) do
+        if result.name == item_name then
+          Item_count_lookup[entity_name][result.name] = result.amount
+          -- log( "updated Item_count_lookup: "..serpent.block(Item_count_lookup) )
+          return result.amount
+        end        
+      end
+    end
+  end
+  Item_count_lookup[entity_name][item_name] = 1 -- make lookup faster at expense of more ram
+  return 1
+end
+
+---- update Sensor ----
+do
 local signals
 local signal_indexes
 
@@ -103,11 +156,13 @@ local function add_signal(name, count)
 end
 
 --- returns ghost requested items as signals or nil
-function Get_Ghost_Requests_as_Signals(logsiticNetwork)
+local function get_ghosts_as_signals(logsiticNetwork)
   if not (logsiticNetwork and logsiticNetwork.valid) then
     return nil
   end
 
+  local result_limit = MaxResults
+  
   local found_entities ={} -- store found unit_numbers to prevent duplicate entries
   signals = {}
   signal_indexes = {}
@@ -115,47 +170,107 @@ function Get_Ghost_Requests_as_Signals(logsiticNetwork)
   for _,cell in pairs(logsiticNetwork.cells) do
     local pos = cell.owner.position
     local r = cell.construction_radius
-    local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }
-
-    -- finding each entity by itself is slightly (0.008ms) faster than finding all and selecting later
-    local entities = cell.owner.surface.find_entities_filtered{area=bounds, type="entity-ghost", force=logsiticNetwork.force}
-    for _, e in pairs(entities) do
-      -- entity-ghost knows items_to_place_this and item_requests (modules)
-      local uid = e.unit_number
-      if not found_entities[uid] then
-        found_entities[uid] = true
-        add_signal(next(e.ghost_prototype.items_to_place_this), 1)
-        for request_item, count in pairs(e.item_requests) do
+    if r > 0 then
+      local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }
+      local entities
+      -- finding each entity by itself is slightly (0.008ms) faster than finding all and selecting later
+      if MaxResults > 0 then
+        entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
+        -- log("found "..tostring(#entities).."/"..tostring(result_limit).." request proxies. remaining results: "..tostring(result_limit - #entities) )
+        result_limit = result_limit - #entities
+      else
+        entities = cell.owner.surface.find_entities_filtered{area=bounds, type="item-request-proxy", force=logsiticNetwork.force}
+        -- log("found "..tostring(#entities).." request proxies." )
+      end
+      
+      for _, e in pairs(entities) do
+        -- item-request-proxy holds item_requests (modules) for built entities
+        local uid = e.proxy_target.unit_number
+        if not found_entities[uid] then
+          found_entities[uid] = true
+          for request_item, count in pairs(e.item_requests) do
             add_signal(request_item, count)
+          end
         end
       end
-    end
 
-    local entities = cell.owner.surface.find_entities_filtered{area=bounds, type="tile-ghost", force=logsiticNetwork.force}
-    for _, e in pairs(entities) do
-      -- tile-ghost knows only items_to_place_this
-      local uid = e.unit_number
-      if not found_entities[uid] then
-        found_entities[uid] = true
-        add_signal(next(e.ghost_prototype.items_to_place_this), 1)
+      if MaxResults > 0 then
+        entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="entity-ghost", force=logsiticNetwork.force}
+        -- log("found "..tostring(#entities).."/"..tostring(result_limit).." ghosts. remaining results: "..tostring(result_limit - #entities) )
+        result_limit = result_limit - #entities
+      else
+        entities = cell.owner.surface.find_entities_filtered{area=bounds, type="entity-ghost", force=logsiticNetwork.force}
+        -- log("found "..tostring(#entities).." ghosts." )      
       end
-    end
+      for _, e in pairs(entities) do
+        -- entity-ghost knows items_to_place_this and item_requests (modules)
+        local uid = e.unit_number
+        if not found_entities[uid] then
+          found_entities[uid] = true
 
-    local entities = cell.owner.surface.find_entities_filtered{area=bounds, type="item-request-proxy", force=logsiticNetwork.force}
-    for _, e in pairs(entities) do
-      -- item-request-proxy holds item_requests (modules) for built entities
-      local uid = e.proxy_target.unit_number
-      if not found_entities[uid] then
-        found_entities[uid] = true
-        for request_item, count in pairs(e.item_requests) do
-          add_signal(request_item, count)
+          -- add_signal(next(e.ghost_prototype.items_to_place_this), 1)
+          for item_name, item_prototype in pairs(e.ghost_prototype.items_to_place_this) do
+            local count = Get_items_to_place_count(e.ghost_prototype.name, item_name)
+            -- log( tostring(e.ghost_prototype.name)..": "..tostring(item_name)..", "..tostring(count) )
+            add_signal(item_name, count)
+          end
+
+          for request_item, count in pairs(e.item_requests) do
+            add_signal(request_item, count)
+          end
         end
       end
-    end
 
-  end
+      if MaxResults > 0 then
+        entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="tile-ghost", force=logsiticNetwork.force}
+        -- log("found "..tostring(#entities).."/"..tostring(result_limit).." tile ghosts. remaining results: "..tostring(result_limit - #entities) )
+        result_limit = result_limit - #entities
+      else
+        entities = cell.owner.surface.find_entities_filtered{area=bounds, type="tile-ghost", force=logsiticNetwork.force}
+        -- log("found "..tostring(#entities).." tile ghosts." )      
+      end
+      for _, e in pairs(entities) do
+        -- tile-ghost knows only items_to_place_this
+        local uid = e.unit_number
+        if not found_entities[uid] then
+          found_entities[uid] = true
+
+          -- add_signal(next(e.ghost_prototype.items_to_place_this), 1)
+          for item_name, item_prototype in pairs(e.ghost_prototype.items_to_place_this) do
+            local count = Get_items_to_place_count(e.ghost_prototype.name, item_name)
+            -- log( tostring(e.ghost_prototype.name)..": "..tostring(item_name)..", "..tostring(count) )
+            add_signal(item_name, count)
+          end
+        end
+      end
+
+    end
+  end -- for logsiticNetwork.cells
 
   return signals
+end
+
+function UpdateSensor(ghostScanner)
+  -- handle invalidated sensors
+  if not ghostScanner.entity.valid then
+    RemoveSensor(ghostScanner.ID)
+    return
+  end
+
+  -- storing logistic network becomes problematic when roboports run out of energy
+  local logisticNetwork = ghostScanner.entity.surface.find_logistic_network_by_position(ghostScanner.entity.position, ghostScanner.entity.force )
+  if not logisticNetwork then
+    ghostScanner.entity.get_control_behavior().parameters = nil
+    return
+  end
+
+  -- set signals
+  local signals = get_ghosts_as_signals(logisticNetwork)
+  if not signals then
+    ghostScanner.entity.get_control_behavior().parameters = nil
+    return
+  end
+  ghostScanner.entity.get_control_behavior().parameters = {parameters=signals}
 end
 
 end
@@ -165,9 +280,8 @@ end
 do
 local function init_events()
 	script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, OnEntityCreated)
-	if global.GhostScanners and #global.GhostScanners > 0 then
-		script.on_event(defines.events.on_tick, OnTick)
-		script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, OnEntityRemoved)
+	if global.GhostScanners then
+    UpdateEventHandlers()
 	end
 end
 
@@ -177,13 +291,14 @@ end)
 
 script.on_init(function()
   global.GhostScanners = global.GhostScanners or {}
+  global.UpdateIndex = global.UpdateIndex or 1
   init_events()
 end)
 
 script.on_configuration_changed(function(data)
   global.GhostScanners = global.GhostScanners or {}
-	init_events()
-  log("[GS] on_config_changed complete.")
+  global.UpdateIndex = global.UpdateIndex or 1
+  init_events()
 end)
 
 end
