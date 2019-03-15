@@ -7,8 +7,8 @@ data:extend({
     enabled = "false",
     ingredients =
     {
-      {"constant-combinator", 1},
-      {"advanced-circuit", 5}
+      {"copper-cable", 5},
+      {"electronic-circuit", 5},
     },
     result = "ghost-scanner"
   }

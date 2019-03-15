@@ -110,29 +110,6 @@ end
 end
 
 
--- workaround using mineable.result, only works if entity mines the same item used to place
--- TODO: 0.17 changes items_to_place_this to include count
-function Get_items_to_place_count(entity_name, item_name)
-  Item_count_lookup[entity_name] = Item_count_lookup[entity_name] or {}
-  
-  if Item_count_lookup[entity_name][item_name] then
-    return Item_count_lookup[entity_name][item_name]
-  else
-    local entity = game.entity_prototypes[entity_name]   
-    if entity and entity.mineable_properties and entity.mineable_properties.products then
-      for _, result in pairs(entity.mineable_properties.products) do
-        if result.name == item_name then
-          Item_count_lookup[entity_name][result.name] = result.amount
-          -- log( "updated Item_count_lookup: "..serpent.block(Item_count_lookup) )
-          return result.amount
-        end        
-      end
-    end
-  end
-  Item_count_lookup[entity_name][item_name] = 1 -- make lookup faster at expense of more ram
-  return 1
-end
-
 ---- update Sensor ----
 do
 local signals
@@ -202,12 +179,10 @@ local function get_ghosts_as_signals(logsiticNetwork)
         if not found_entities[uid] then
           found_entities[uid] = true
 
-          -- add_signal(next(e.ghost_prototype.items_to_place_this), 1)
-          for item_name, item_prototype in pairs(e.ghost_prototype.items_to_place_this) do
-            local count = Get_items_to_place_count(e.ghost_prototype.name, item_name)
-            -- log( tostring(e.ghost_prototype.name)..": "..tostring(item_name)..", "..tostring(count) )
-            add_signal(item_name, count)
-            count_unique_entities = count_unique_entities + count
+          -- for item_name, item_prototype in pairs(e.ghost_prototype.items_to_place_this) do
+          for _, item_stack in pairs(e.ghost_prototype.items_to_place_this) do  
+            add_signal(item_stack.name, item_stack.count)
+            count_unique_entities = count_unique_entities + item_stack.count
           end
 
           for request_item, count in pairs(e.item_requests) do
@@ -231,11 +206,9 @@ local function get_ghosts_as_signals(logsiticNetwork)
           found_entities[uid] = true
 
           -- add_signal(next(e.ghost_prototype.items_to_place_this), 1)
-          for item_name, item_prototype in pairs(e.ghost_prototype.items_to_place_this) do
-            local count = Get_items_to_place_count(e.ghost_prototype.name, item_name)
-            -- log( tostring(e.ghost_prototype.name)..": "..tostring(item_name)..", "..tostring(count) )
-            add_signal(item_name, count)
-            count_unique_entities = count_unique_entities + count
+          for _, item_stack in pairs(e.ghost_prototype.items_to_place_this) do
+            add_signal(item_stack.name, item_stack.count)
+            count_unique_entities = count_unique_entities + item_stack.count
           end
         end
       end
