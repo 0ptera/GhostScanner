@@ -16,12 +16,12 @@
             ],
             "problemMatcher": [],
             "group": {
-                "kind": "test",
+                "kind": "build",
                 "isDefault": true
             }
         },
         {
-            "label": "build",
+            "label": "create archive",
             "type": "shell",
             "command": "powershell",
             "args": [
@@ -32,10 +32,7 @@
                 "${workspaceFolder}\\..\\makezip.ps1"
             ],
             "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "group": "build"
         }
     ]
 }
