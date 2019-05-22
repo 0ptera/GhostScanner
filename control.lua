@@ -141,7 +141,7 @@ local function get_ghosts_as_signals(logsiticNetwork)
   end
 
   local result_limit = MaxResults
-  
+
   local found_entities ={} -- store found unit_numbers to prevent duplicate entries
   signals = {}
   signal_indexes = {}
@@ -150,37 +150,18 @@ local function get_ghosts_as_signals(logsiticNetwork)
     local pos = cell.owner.position
     local r = cell.construction_radius
     if r > 0 then
-      local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }      
+      local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }
       -- finding each entity by itself is slightly (0.008ms) faster than finding all and selecting later
-      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
-      local count_unique_entities = 0
-      for _, e in pairs(entities) do
-        -- item-request-proxy holds item_requests (modules) for built entities
-        local uid = e.proxy_target.unit_number
-        if not found_entities[uid] then
-          found_entities[uid] = true
-          for request_item, count in pairs(e.item_requests) do
-            add_signal(request_item, count)
-            count_unique_entities = count_unique_entities + count
-          end
-        end
-      end
-      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." request proxies." ) 
-      if MaxResults then         
-        result_limit = result_limit - count_unique_entities
-        if result_limit <= 0 then break end
-      end
 
+      -- entity-ghost knows items_to_place_this and item_requests (modules)
       local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="entity-ghost", force=logsiticNetwork.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
-        -- entity-ghost knows items_to_place_this and item_requests (modules)
         local uid = e.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
 
-          -- for item_name, item_prototype in pairs(e.ghost_prototype.items_to_place_this) do
-          for _, item_stack in pairs(e.ghost_prototype.items_to_place_this) do  
+          for _, item_stack in pairs(e.ghost_prototype.items_to_place_this) do
             add_signal(item_stack.name, item_stack.count)
             count_unique_entities = count_unique_entities + item_stack.count
           end
@@ -191,16 +172,35 @@ local function get_ghosts_as_signals(logsiticNetwork)
           end
         end
       end
-      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." ghosts." ) 
-      if MaxResults then         
+      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." ghosts." )
+      if MaxResults then
         result_limit = result_limit - count_unique_entities
         if result_limit <= 0 then break end
       end
 
+      -- item-request-proxy holds item_requests (modules) for built entities
+      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
+      local count_unique_entities = 0
+      for _, e in pairs(entities) do
+        local uid = e.proxy_target.unit_number
+        if not found_entities[uid] then
+          found_entities[uid] = true
+          for request_item, count in pairs(e.item_requests) do
+            add_signal(request_item, count)
+            count_unique_entities = count_unique_entities + count
+          end
+        end
+      end
+      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." request proxies." )
+      if MaxResults then
+        result_limit = result_limit - count_unique_entities
+        if result_limit <= 0 then break end
+      end
+
+      -- tile-ghost knows only items_to_place_this
       local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="tile-ghost", force=logsiticNetwork.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
-        -- tile-ghost knows only items_to_place_this
         local uid = e.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
@@ -212,8 +212,8 @@ local function get_ghosts_as_signals(logsiticNetwork)
           end
         end
       end
-      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." tile-ghosts." ) 
-      if MaxResults then         
+      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." tile-ghosts." )
+      if MaxResults then
         result_limit = result_limit - count_unique_entities
         if result_limit <= 0 then break end
       end
