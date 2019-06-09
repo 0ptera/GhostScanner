@@ -23,4 +23,11 @@ data:extend({
     setting_type = "runtime-global",
     default_value = false,
   },
+  {
+    type = "bool-setting",
+    name = "ghost-scanner-round2stack",
+    order = "ba",
+    setting_type = "runtime-global",
+    default_value = false,
+  },
 })

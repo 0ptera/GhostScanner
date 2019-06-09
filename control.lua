@@ -8,6 +8,7 @@ local UpdateInterval = settings.global["ghost-scanner_update_interval"].value
 local MaxResults = settings.global["ghost-scanner_max_results"].value
 if MaxResults == 0 then MaxResults = nil end
 local InvertSign = settings.global["ghost-scanner-negative-output"].value
+local RoundToStack = settings.global["ghost-scanner-round2stack"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ghost-scanner_update_interval" then
@@ -20,6 +21,9 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ghost-scanner-negative-output" then
     InvertSign = settings.global["ghost-scanner-negative-output"].value
+  end
+  if event.setting == "ghost-scanner-round2stack" then
+    RoundToStack = settings.global["ghost-scanner-round2stack"].value
   end
 end)
 
@@ -220,6 +224,22 @@ local function get_ghosts_as_signals(logsiticNetwork)
 
     end
   end -- for logsiticNetwork.cells
+
+  -- round signals to next stack size
+  -- signal = { type = "item", name = name }, count = 0, index = (signal_index)
+  if RoundToStack then
+    local round = math.ceil
+    if InvertSign then round = math.floor end
+
+    for _, signal in pairs(signals) do
+      local ceil = math.ceil
+      local prototype = game.item_prototypes[signal.signal.name]
+      if prototype then
+        local stack_size = prototype.stack_size
+        signal.count = round(signal.count / stack_size) * stack_size
+      end
+    end
+  end
 
   return signals
 end
