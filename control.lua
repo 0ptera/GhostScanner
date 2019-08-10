@@ -1,3 +1,33 @@
+--[[ Copyright (c) 2019 Optera
+ * Part of Ghost Scanner
+ *
+ * See LICENSE.md in the project directory for license information.
+--]]
+
+-- local logger = require("__OpteraLib__.script.logger")
+-- logger.settings.read_all_properties = false
+-- logger.settings.max_depth = 6
+
+-- logger.settings.class_dictionary.LuaEntity = {
+--   backer_name = true,
+--   name = true,
+--   type = true,
+--   unit_number = true,
+--   force = true,
+--   logistic_network = true,
+--   logistic_cell = true,
+--   item_requests = true,
+--   ghost_prototype = true,
+--  }
+-- logger.settings.class_dictionary.LuaEntityPrototype = {
+--   type = true,
+--   name = true,
+--   valid = true,
+--   items_to_place_this = true,
+--   next_upgrade = true,
+--  }
+
+
 -- constant prototypes names
 local SENSOR = "ghost-scanner"
 local Item_count_lookup = {}
@@ -32,20 +62,22 @@ end)
 
 do -- create & remove
 function OnEntityCreated(event)
-	if (event.created_entity.name == SENSOR) then
-    local entity = event.created_entity
-    global.GhostScanners = global.GhostScanners or {}
+  local entity = event.created_entity or event.entity
+  if entity then
+    if entity.name == SENSOR then
+      global.GhostScanners = global.GhostScanners or {}
 
-    -- entity.operable = false
-    -- entity.rotatable = false
+      -- entity.operable = false
+      -- entity.rotatable = false
 
-    local ghostScanner = {}
-    ghostScanner.ID = entity.unit_number
-    ghostScanner.entity = entity
-    global.GhostScanners[#global.GhostScanners+1] = ghostScanner
+      local ghostScanner = {}
+      ghostScanner.ID = entity.unit_number
+      ghostScanner.entity = entity
+      global.GhostScanners[#global.GhostScanners+1] = ghostScanner
 
-    UpdateEventHandlers()
-	end
+      UpdateEventHandlers()
+    end
+  end
 end
 
 function RemoveSensor(id)
@@ -248,6 +280,12 @@ function UpdateSensor(ghostScanner)
   -- handle invalidated sensors
   if not ghostScanner.entity.valid then
     RemoveSensor(ghostScanner.ID)
+    return
+  end
+
+  -- skip scanner if disabled
+  if not ghostScanner.entity.get_control_behavior().enabled then
+    ghostScanner.entity.get_control_behavior().parameters = nil
     return
   end
 

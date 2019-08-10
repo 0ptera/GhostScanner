@@ -1,11 +1,11 @@
 {
   "name": "GhostScanner",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "title": "Ghost Scanner",
   "author": "Optera",
   "contact": "https://forums.factorio.com/memberlist.php?mode=viewprofile&u=21729",
   "homepage": "https://mods.factorio.com/mod/GhostScanner",
   "description": "Adds a combinator reading ghost requests from the logistic network it's placed in.",
   "factorio_version": "0.17",
-	"dependencies": ["base >= 0.17.47"]
+	"dependencies": ["base >= 0.17.64"]
 }
