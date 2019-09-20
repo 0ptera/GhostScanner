@@ -77,7 +77,9 @@ function OnEntityCreated(event)
 
       UpdateEventHandlers()
     end
+
   end
+
 end
 
 function RemoveSensor(id)
@@ -188,6 +190,27 @@ local function get_ghosts_as_signals(logsiticNetwork)
     if r > 0 then
       local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }
       -- finding each entity by itself is slightly (0.008ms) faster than finding all and selecting later
+
+      -- upgrade requests (requires 0.17.69)
+      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, to_be_upgraded=true, force=logsiticNetwork.force}
+      local count_unique_entities = 0
+      for _, e in pairs(entities) do
+        local uid = e.unit_number
+        local upgrade_prototype = e.get_upgrade_target()
+        if not found_entities[uid] and upgrade_prototype then
+          found_entities[uid] = true
+
+          for _, item_stack in pairs(upgrade_prototype.items_to_place_this) do
+            add_signal(item_stack.name, item_stack.count)
+            count_unique_entities = count_unique_entities + item_stack.count
+          end
+        end
+      end
+      -- log("found "..tostring(count_unique_entities).."/"..tostring(result_limit).." upgrade requests." )
+      if MaxResults then
+        result_limit = result_limit - count_unique_entities
+        if result_limit <= 0 then break end
+      end
 
       -- entity-ghost knows items_to_place_this and item_requests (modules)
       local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="entity-ghost", force=logsiticNetwork.force}
@@ -311,7 +334,12 @@ end
 ---- INIT ----
 do
 local function init_events()
-	script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, OnEntityCreated)
+  script.on_event({
+    defines.events.on_built_entity,
+    defines.events.on_robot_built_entity,
+    defines.events.script_raised_built,
+    defines.events.script_raised_revive,
+  }, OnEntityCreated)
 	if global.GhostScanners then
     UpdateEventHandlers()
 	end
