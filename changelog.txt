@@ -2,7 +2,7 @@
 Version: 1.4.7
 Date: 2020-01-13
   Features:
-    - increased performance with lookup table for items_to_place_this
+    - increased performance with lookup table for items_to_place_this, thanks to OwnlyMe for letting me know about this
 ---------------------------------------------------------------------------------------------------
 Version: 1.4.6
 Date: 2019-09-20
