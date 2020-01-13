@@ -30,7 +30,6 @@
 
 -- constant prototypes names
 local SENSOR = "ghost-scanner"
-local Item_count_lookup = {}
 
 ---- MOD SETTINGS ----
 
@@ -153,6 +152,15 @@ do
 local signals
 local signal_indexes
 
+local function add_items_to_place(prototype)
+  global.Lookup_items_to_place_this[prototype.name] = prototype.items_to_place_this
+  return global.Lookup_items_to_place_this[prototype.name]
+end
+
+local function get_items_to_place(prototype) -- slower than inline check, but much more readable
+  return global.Lookup_items_to_place_this[prototype.name] or add_items_to_place(prototype)
+end
+
 local function add_signal(name, count)
   local signal_index = signal_indexes[name]
   local s
@@ -189,7 +197,6 @@ local function get_ghosts_as_signals(logsiticNetwork)
     local r = cell.construction_radius
     if r > 0 then
       local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }
-      -- finding each entity by itself is slightly (0.008ms) faster than finding all and selecting later
 
       -- upgrade requests (requires 0.17.69)
       local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, to_be_upgraded=true, force=logsiticNetwork.force}
@@ -200,7 +207,7 @@ local function get_ghosts_as_signals(logsiticNetwork)
         if not found_entities[uid] and upgrade_prototype then
           found_entities[uid] = true
 
-          for _, item_stack in pairs(upgrade_prototype.items_to_place_this) do
+          for _, item_stack in pairs( get_items_to_place(upgrade_prototype) ) do
             add_signal(item_stack.name, item_stack.count)
             count_unique_entities = count_unique_entities + item_stack.count
           end
@@ -220,7 +227,7 @@ local function get_ghosts_as_signals(logsiticNetwork)
         if not found_entities[uid] then
           found_entities[uid] = true
 
-          for _, item_stack in pairs(e.ghost_prototype.items_to_place_this) do
+          for _, item_stack in pairs( get_items_to_place(e.ghost_prototype) ) do
             add_signal(item_stack.name, item_stack.count)
             count_unique_entities = count_unique_entities + item_stack.count
           end
@@ -265,7 +272,7 @@ local function get_ghosts_as_signals(logsiticNetwork)
           found_entities[uid] = true
 
           -- add_signal(next(e.ghost_prototype.items_to_place_this), 1)
-          for _, item_stack in pairs(e.ghost_prototype.items_to_place_this) do
+          for _, item_stack in pairs( get_items_to_place(e.ghost_prototype) ) do
             add_signal(item_stack.name, item_stack.count)
             count_unique_entities = count_unique_entities + item_stack.count
           end
@@ -352,12 +359,14 @@ end)
 script.on_init(function()
   global.GhostScanners = global.GhostScanners or {}
   global.UpdateIndex = global.UpdateIndex or 1
+  global.Lookup_items_to_place_this = {}
   init_events()
 end)
 
 script.on_configuration_changed(function(data)
   global.GhostScanners = global.GhostScanners or {}
   global.UpdateIndex = global.UpdateIndex or 1
+  global.Lookup_items_to_place_this = {}
   init_events()
 end)
 
