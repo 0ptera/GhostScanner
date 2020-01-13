@@ -152,13 +152,9 @@ do
 local signals
 local signal_indexes
 
-local function add_items_to_place(prototype_name)
-  global.Lookup_items_to_place_this[prototype_name] = game.entity_prototypes[prototype_name].items_to_place_this
-  return global.Lookup_items_to_place_this[prototype_name]
-end
-
-local function get_items_to_place(prototype_name) -- slower than inline check, but much more readable
-  return global.Lookup_items_to_place_this[prototype_name] or add_items_to_place(prototype_name)
+local function get_items_to_place(prototype)
+  global.Lookup_items_to_place_this[prototype.name] = prototype.items_to_place_this
+  return global.Lookup_items_to_place_this[prototype.name]
 end
 
 local function add_signal(name, count)
@@ -207,7 +203,10 @@ local function get_ghosts_as_signals(logsiticNetwork)
         if not found_entities[uid] and upgrade_prototype then
           found_entities[uid] = true
 
-          for _, item_stack in pairs( get_items_to_place(upgrade_prototype.name) ) do
+          for _, item_stack in pairs(
+            global.Lookup_items_to_place_this[upgrade_prototype.name] or
+            get_items_to_place(upgrade_prototype)
+          ) do
             add_signal(item_stack.name, item_stack.count)
             count_unique_entities = count_unique_entities + item_stack.count
           end
@@ -227,7 +226,10 @@ local function get_ghosts_as_signals(logsiticNetwork)
         if not found_entities[uid] then
           found_entities[uid] = true
 
-          for _, item_stack in pairs( get_items_to_place(e.ghost_name) ) do
+          for _, item_stack in pairs(
+            global.Lookup_items_to_place_this[e.ghost_name] or
+            get_items_to_place(e.ghost_prototype)
+          ) do
             add_signal(item_stack.name, item_stack.count)
             count_unique_entities = count_unique_entities + item_stack.count
           end
@@ -270,9 +272,10 @@ local function get_ghosts_as_signals(logsiticNetwork)
         local uid = e.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
-
-          -- add_signal(next(e.ghost_prototype.items_to_place_this), 1)
-          for _, item_stack in pairs( get_items_to_place(e.ghost_name) ) do
+          for _, item_stack in pairs(
+            global.Lookup_items_to_place_this[e.ghost_name] or
+            get_items_to_place(e.ghost_prototype)
+          ) do
             add_signal(item_stack.name, item_stack.count)
             count_unique_entities = count_unique_entities + item_stack.count
           end

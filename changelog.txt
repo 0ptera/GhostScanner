@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.4.9
+Date: 2020-01-13
+  Bugfixes:
+    - 1.4.8 introduced nil index errors with tile ghosts
+---------------------------------------------------------------------------------------------------
 Version: 1.4.8
 Date: 2020-01-13
   Features:
@@ -28,7 +33,7 @@ Date: 2019-06-09
 Version: 1.4.3
 Date: 2019-05-22
   Changes:
-    - Module requests for existing entities are aggregated after entitiy ghosts and their module requests.
+    - Module requests for existing entities are aggregated after entity ghosts and their module requests.
 ---------------------------------------------------------------------------------------------------
 Version: 1.4.2
 Date: 2019-04-15
