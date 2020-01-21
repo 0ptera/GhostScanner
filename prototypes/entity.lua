@@ -2,6 +2,7 @@ local inv_sensor = table.deepcopy(data.raw["constant-combinator"]["constant-comb
 inv_sensor.name = "ghost-scanner"
 inv_sensor.icon = "__GhostScanner__/graphics/icons/ghost-scanner.png"
 inv_sensor.icon_size = 32
+inv_sensor.icon_mipmaps = 1
 inv_sensor.minable.result = "ghost-scanner"
 inv_sensor.sprites = make_4way_animation_from_spritesheet(
   { layers =
@@ -44,6 +45,6 @@ inv_sensor.sprites = make_4way_animation_from_spritesheet(
   })
 
 inv_sensor.item_slot_count = 1000
-    
-    
+
+
 data:extend({ inv_sensor })
