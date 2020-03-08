@@ -192,7 +192,7 @@ local function get_ghosts_as_signals(logsiticNetwork)
     local pos = cell.owner.position
     local r = cell.construction_radius
     if r > 0 then
-      local bounds = { { pos.x - r, pos.y - r, }, { pos.x + r, pos.y + r } }
+      local bounds = { { pos.x-r+0.001, pos.y-r+0.001, }, { pos.x+r-0.001, pos.y+r-0.001 } }
 
       -- upgrade requests (requires 0.17.69)
       local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, to_be_upgraded=true, force=logsiticNetwork.force}

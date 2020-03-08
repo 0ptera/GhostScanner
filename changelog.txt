@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.5.2
+Date: 2020-03-08
+  Bugfixes:
+    - reduce search area slightly so find_entities_filtered doesn't include ghosts sharing construction area bounds
+---------------------------------------------------------------------------------------------------
 Version: 1.5.1
 Date: 2020-01-21
   Bugfixes:
