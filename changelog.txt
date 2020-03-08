@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.5.3
+Date: 2020-03-08
+  Bugfixes:
+    - entities with position outside a construction area where seen by the scanner, but can't be built by bots
+---------------------------------------------------------------------------------------------------
 Version: 1.5.2
 Date: 2020-03-08
   Bugfixes:

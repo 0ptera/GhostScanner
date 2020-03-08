@@ -147,6 +147,7 @@ end
 end
 
 
+
 ---- update Sensor ----
 do
 local signals
@@ -176,6 +177,14 @@ local function add_signal(name, count)
   end
 end
 
+local function is_in_bbox(pos, area)
+  if pos.x >= area.left_top.x and pos.x <= area.right_bottom.x
+  and pos.y >= area.left_top.y and pos.y <= area.right_bottom.y then
+    return true
+  end
+  return false
+end
+
 --- returns ghost requested items as signals or nil
 local function get_ghosts_as_signals(logsiticNetwork)
   if not (logsiticNetwork and logsiticNetwork.valid) then
@@ -192,7 +201,8 @@ local function get_ghosts_as_signals(logsiticNetwork)
     local pos = cell.owner.position
     local r = cell.construction_radius
     if r > 0 then
-      local bounds = { { pos.x-r+0.001, pos.y-r+0.001, }, { pos.x+r-0.001, pos.y+r-0.001 } }
+      -- local bounds = { { pos.x-r, pos.y-r, }, { pos.x+r, pos.y+r } }
+      local bounds = { left_top={ x=pos.x-r, y=pos.y-r, }, right_bottom={ x=pos.x+r, y=pos.y+r } }
 
       -- upgrade requests (requires 0.17.69)
       local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, to_be_upgraded=true, force=logsiticNetwork.force}
@@ -202,13 +212,14 @@ local function get_ghosts_as_signals(logsiticNetwork)
         local upgrade_prototype = e.get_upgrade_target()
         if not found_entities[uid] and upgrade_prototype then
           found_entities[uid] = true
-
-          for _, item_stack in pairs(
-            global.Lookup_items_to_place_this[upgrade_prototype.name] or
-            get_items_to_place(upgrade_prototype)
-          ) do
-            add_signal(item_stack.name, item_stack.count)
-            count_unique_entities = count_unique_entities + item_stack.count
+          if is_in_bbox(e.position, bounds) then
+            for _, item_stack in pairs(
+              global.Lookup_items_to_place_this[upgrade_prototype.name] or
+              get_items_to_place(upgrade_prototype)
+            ) do
+              add_signal(item_stack.name, item_stack.count)
+              count_unique_entities = count_unique_entities + item_stack.count
+            end
           end
         end
       end
@@ -225,18 +236,19 @@ local function get_ghosts_as_signals(logsiticNetwork)
         local uid = e.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
+          if is_in_bbox(e.position, bounds) then
+            for _, item_stack in pairs(
+              global.Lookup_items_to_place_this[e.ghost_name] or
+              get_items_to_place(e.ghost_prototype)
+            ) do
+              add_signal(item_stack.name, item_stack.count)
+              count_unique_entities = count_unique_entities + item_stack.count
+            end
 
-          for _, item_stack in pairs(
-            global.Lookup_items_to_place_this[e.ghost_name] or
-            get_items_to_place(e.ghost_prototype)
-          ) do
-            add_signal(item_stack.name, item_stack.count)
-            count_unique_entities = count_unique_entities + item_stack.count
-          end
-
-          for request_item, count in pairs(e.item_requests) do
-            add_signal(request_item, count)
-            count_unique_entities = count_unique_entities + count
+            for request_item, count in pairs(e.item_requests) do
+              add_signal(request_item, count)
+              count_unique_entities = count_unique_entities + count
+            end
           end
         end
       end
@@ -253,9 +265,11 @@ local function get_ghosts_as_signals(logsiticNetwork)
         local uid = e.proxy_target.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
-          for request_item, count in pairs(e.item_requests) do
-            add_signal(request_item, count)
-            count_unique_entities = count_unique_entities + count
+          if is_in_bbox(e.position, bounds) then
+            for request_item, count in pairs(e.item_requests) do
+              add_signal(request_item, count)
+              count_unique_entities = count_unique_entities + count
+            end
           end
         end
       end
@@ -272,12 +286,14 @@ local function get_ghosts_as_signals(logsiticNetwork)
         local uid = e.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
-          for _, item_stack in pairs(
-            global.Lookup_items_to_place_this[e.ghost_name] or
-            get_items_to_place(e.ghost_prototype)
-          ) do
-            add_signal(item_stack.name, item_stack.count)
-            count_unique_entities = count_unique_entities + item_stack.count
+          if is_in_bbox(e.position, bounds) then
+            for _, item_stack in pairs(
+              global.Lookup_items_to_place_this[e.ghost_name] or
+              get_items_to_place(e.ghost_prototype)
+            ) do
+              add_signal(item_stack.name, item_stack.count)
+              count_unique_entities = count_unique_entities + item_stack.count
+            end
           end
         end
       end
