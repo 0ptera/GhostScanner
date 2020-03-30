@@ -1,8 +1,15 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.5.4
+Date: 2020-03-30
+  Features:
+    - report amount of cliff explosives, does not account for bots optimizing use of explosives
+  Changes:
+    - area check for request proxy and tiles uses old, faster method, works only with collision boxes <= 1x1
+---------------------------------------------------------------------------------------------------
 Version: 1.5.3
 Date: 2020-03-08
   Bugfixes:
-    - entities with position outside a construction area where seen by the scanner, but can't be built by bots
+    - scanner counts ghosts outside constructible area if they protrude into it
 ---------------------------------------------------------------------------------------------------
 Version: 1.5.2
 Date: 2020-03-08

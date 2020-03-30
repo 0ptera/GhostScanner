@@ -201,8 +201,30 @@ local function get_ghosts_as_signals(logsiticNetwork)
     local pos = cell.owner.position
     local r = cell.construction_radius
     if r > 0 then
-      -- local bounds = { { pos.x-r, pos.y-r, }, { pos.x+r, pos.y+r } }
-      local bounds = { left_top={ x=pos.x-r, y=pos.y-r, }, right_bottom={ x=pos.x+r, y=pos.y+r } }
+      local bounds = {
+        left_top={ x=pos.x-r, y=pos.y-r, },
+        right_bottom={ x=pos.x+r, y=pos.y+r }
+      }
+      local inner_bounds = { -- hack to skip checking if position is inside bounds for tiles
+        left_top={ x=pos.x-r+0.001, y=pos.y-r+0.001, },
+        right_bottom={ x=pos.x+r-0.001, y=pos.y+r-0.001 }
+      }
+
+      -- cliffs
+      local entities = cell.owner.surface.find_entities_filtered{area=inner_bounds, limit=result_limit, type="cliff"}
+      local count_unique_entities = 0
+      for _, e in pairs(entities) do
+        local uid = e.unit_number or e.position
+        if not found_entities[uid] and e.to_be_deconstructed() and e.prototype.cliff_explosive_prototype then
+          found_entities[uid] = true
+          add_signal(e.prototype.cliff_explosive_prototype, 1)
+          count_unique_entities = count_unique_entities + 1
+        end
+      end
+      if MaxResults then
+        result_limit = result_limit - count_unique_entities
+        if result_limit <= 0 then break end
+      end
 
       -- upgrade requests (requires 0.17.69)
       local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, to_be_upgraded=true, force=logsiticNetwork.force}
@@ -259,17 +281,15 @@ local function get_ghosts_as_signals(logsiticNetwork)
       end
 
       -- item-request-proxy holds item_requests (modules) for built entities
-      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
+      local entities = cell.owner.surface.find_entities_filtered{area=inner_bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
         local uid = e.proxy_target.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
-          if is_in_bbox(e.position, bounds) then
-            for request_item, count in pairs(e.item_requests) do
-              add_signal(request_item, count)
-              count_unique_entities = count_unique_entities + count
-            end
+          for request_item, count in pairs(e.item_requests) do
+            add_signal(request_item, count)
+            count_unique_entities = count_unique_entities + count
           end
         end
       end
@@ -280,20 +300,18 @@ local function get_ghosts_as_signals(logsiticNetwork)
       end
 
       -- tile-ghost knows only items_to_place_this
-      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="tile-ghost", force=logsiticNetwork.force}
+      local entities = cell.owner.surface.find_entities_filtered{area=inner_bounds, limit=result_limit, type="tile-ghost", force=logsiticNetwork.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
         local uid = e.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
-          if is_in_bbox(e.position, bounds) then
-            for _, item_stack in pairs(
-              global.Lookup_items_to_place_this[e.ghost_name] or
-              get_items_to_place(e.ghost_prototype)
-            ) do
-              add_signal(item_stack.name, item_stack.count)
-              count_unique_entities = count_unique_entities + item_stack.count
-            end
+          for _, item_stack in pairs(
+            global.Lookup_items_to_place_this[e.ghost_name] or
+            get_items_to_place(e.ghost_prototype)
+          ) do
+            add_signal(item_stack.name, item_stack.count)
+            count_unique_entities = count_unique_entities + item_stack.count
           end
         end
       end
