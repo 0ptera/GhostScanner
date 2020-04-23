@@ -29,7 +29,7 @@
 
 
 -- constant prototypes names
-local SENSOR = "ghost-scanner"
+local Scanner_Name = "ghost-scanner"
 
 ---- MOD SETTINGS ----
 
@@ -62,8 +62,8 @@ end)
 do -- create & remove
 function OnEntityCreated(event)
   local entity = event.created_entity or event.entity
-  if entity then
-    if entity.name == SENSOR then
+  if entity and entity.valid then
+    if entity.name == Scanner_Name then
       global.GhostScanners = global.GhostScanners or {}
 
       -- entity.operable = false
@@ -93,9 +93,9 @@ end
 
 function OnEntityRemoved(event)
 -- script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
-	if event.entity.name == SENSOR then
+  if event.entity.name == Scanner_Name then
     RemoveSensor(event.entity.unit_number)
-	end
+  end
 end
 end
 
@@ -196,6 +196,9 @@ local function get_ghosts_as_signals(logsiticNetwork)
   local found_entities ={} -- store found unit_numbers to prevent duplicate entries
   signals = {}
   signal_indexes = {}
+
+  -- logistic networks don't have an id outside the gui, show the number of cells (roboports) to match the gui
+  signals[1] = { signal = { type = "virtual", name = "ghost-scanner-cell-count" }, count = table_size(logsiticNetwork.cells), index = (1) }
 
   for _,cell in pairs(logsiticNetwork.cells) do
     local pos = cell.owner.position
@@ -384,9 +387,9 @@ local function init_events()
     defines.events.script_raised_built,
     defines.events.script_raised_revive,
   }, OnEntityCreated)
-	if global.GhostScanners then
+  if global.GhostScanners then
     UpdateEventHandlers()
-	end
+  end
 end
 
 script.on_load(function()
