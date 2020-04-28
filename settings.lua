@@ -26,8 +26,15 @@ data:extend({
   {
     type = "bool-setting",
     name = "ghost-scanner-round2stack",
-    order = "ba",
+    order = "bb",
     setting_type = "runtime-global",
     default_value = false,
+  },
+  {
+    type = "bool-setting",
+    name = "ghost-scanner-cell-count",
+    order = "bc",
+    setting_type = "runtime-global",
+    default_value = true,
   },
 })

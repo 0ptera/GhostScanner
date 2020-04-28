@@ -38,6 +38,7 @@ local MaxResults = settings.global["ghost-scanner_max_results"].value
 if MaxResults == 0 then MaxResults = nil end
 local InvertSign = settings.global["ghost-scanner-negative-output"].value
 local RoundToStack = settings.global["ghost-scanner-round2stack"].value
+local ShowCellCount = settings.global["ghost-scanner-cell-count"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ghost-scanner_update_interval" then
@@ -53,6 +54,9 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ghost-scanner-round2stack" then
     RoundToStack = settings.global["ghost-scanner-round2stack"].value
+  end
+  if event.setting == "ghost-scanner-cell-count" then
+    ShowCellCount = settings.global["ghost-scanner-cell-count"].value
   end
 end)
 
@@ -198,7 +202,9 @@ local function get_ghosts_as_signals(logsiticNetwork)
   signal_indexes = {}
 
   -- logistic networks don't have an id outside the gui, show the number of cells (roboports) to match the gui
-  signals[1] = { signal = { type = "virtual", name = "ghost-scanner-cell-count" }, count = table_size(logsiticNetwork.cells), index = (1) }
+  if ShowCellCount then
+    signals[1] = { signal = { type = "virtual", name = "ghost-scanner-cell-count" }, count = table_size(logsiticNetwork.cells), index = (1) }
+  end
 
   for _,cell in pairs(logsiticNetwork.cells) do
     local pos = cell.owner.position
