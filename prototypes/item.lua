@@ -14,5 +14,6 @@ data:extend({
     subgroup = "circuit-network-2",
     order = "gs-a",
     stack_size= 50,
+    flags = {"draw-logistic-overlay"} -- requires 0.18.25
   }
 })
