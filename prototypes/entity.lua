@@ -44,7 +44,6 @@ scanner.icon = "__GhostScanner__/graphics/icons/ghost-scanner.png"
 scanner.icon_size = 32
 scanner.icon_mipmaps = 1
 scanner.minable.result = "ghost-scanner"
--- scanner.placeable_by = {item = "ghost-scanner", count = 1}
 scanner.sprites = sprites
 scanner.item_slot_count = 1000
 

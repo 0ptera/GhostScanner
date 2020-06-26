@@ -293,7 +293,7 @@ local function get_ghosts_as_signals(logsiticNetwork)
       local entities = cell.owner.surface.find_entities_filtered{area=inner_bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
-        local uid = e.proxy_target.unit_number
+        local uid = script.register_on_entity_destroyed(e) -- abuse on_entity_destroyed to generate ids directly for proxies
         if not found_entities[uid] then
           found_entities[uid] = true
           for request_item, count in pairs(e.item_requests) do
