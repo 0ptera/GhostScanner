@@ -1,8 +1,13 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.5.9
-Date: 2020-11-13
-  Bugfixes:
-    - unlock was added to the wrong technology
+Version: 1.6.1
+Date: 2020-11-26
+  Features:
+    - requests are scanned in order over all cells instead of per cell
+---------------------------------------------------------------------------------------------------
+Version: 1.6.0
+Date: 2020-11-26
+  Features:
+    - updated to Factorio 1.1
 ---------------------------------------------------------------------------------------------------
 Version: 1.5.8
 Date: 2020-06-26

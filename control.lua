@@ -197,6 +197,7 @@ local function get_ghosts_as_signals(logsiticNetwork)
 
   local result_limit = MaxResults
 
+  local search_areas = {}
   local found_entities ={} -- store found unit_numbers to prevent duplicate entries
   signals = {}
   signal_indexes = {}
@@ -218,32 +219,44 @@ local function get_ghosts_as_signals(logsiticNetwork)
         left_top={ x=pos.x-r+0.001, y=pos.y-r+0.001, },
         right_bottom={ x=pos.x+r-0.001, y=pos.y+r-0.001 }
       }
+      search_areas[#search_areas+1] = {
+        bounds=bounds,
+        inner_bounds=inner_bounds,
+        force=logsiticNetwork.force,
+        surface=cell.owner.surface
+      }
+    end
+  end
 
-      -- cliffs
-      local entities = cell.owner.surface.find_entities_filtered{area=inner_bounds, limit=result_limit, type="cliff"}
-      local count_unique_entities = 0
-      for _, e in pairs(entities) do
-        local uid = e.unit_number or e.position
-        if not found_entities[uid] and e.to_be_deconstructed() and e.prototype.cliff_explosive_prototype then
-          found_entities[uid] = true
-          add_signal(e.prototype.cliff_explosive_prototype, 1)
-          count_unique_entities = count_unique_entities + 1
-        end
+  -- cliffs
+  for _, search_area in pairs(search_areas) do
+    local entities = search_area.surface.find_entities_filtered{area=search_area.inner_bounds, limit=result_limit, type="cliff"}
+    local count_unique_entities = 0
+    for _, e in pairs(entities) do
+      local uid = e.unit_number or e.position
+      if not found_entities[uid] and e.to_be_deconstructed() and e.prototype.cliff_explosive_prototype then
+        found_entities[uid] = true
+        add_signal(e.prototype.cliff_explosive_prototype, 1)
+        count_unique_entities = count_unique_entities + 1
       end
-      if MaxResults then
-        result_limit = result_limit - count_unique_entities
-        if result_limit <= 0 then break end
-      end
+    end
+    if MaxResults then
+      result_limit = result_limit - count_unique_entities
+      if result_limit <= 0 then break end
+    end
+  end
 
-      -- upgrade requests (requires 0.17.69)
-      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, to_be_upgraded=true, force=logsiticNetwork.force}
+  -- upgrade requests (requires 0.17.69)
+  if MaxResults == nil or result_limit > 0 then
+    for _, search_area in pairs(search_areas) do
+      local entities = search_area.surface.find_entities_filtered{area=search_area.bounds, limit=result_limit, to_be_upgraded=true, force=search_area.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
         local uid = e.unit_number
         local upgrade_prototype = e.get_upgrade_target()
         if not found_entities[uid] and upgrade_prototype then
           found_entities[uid] = true
-          if is_in_bbox(e.position, bounds) then
+          if is_in_bbox(e.position, search_area.bounds) then
             for _, item_stack in pairs(
               global.Lookup_items_to_place_this[upgrade_prototype.name] or
               get_items_to_place(upgrade_prototype)
@@ -259,15 +272,19 @@ local function get_ghosts_as_signals(logsiticNetwork)
         result_limit = result_limit - count_unique_entities
         if result_limit <= 0 then break end
       end
+    end
+  end
 
-      -- entity-ghost knows items_to_place_this and item_requests (modules)
-      local entities = cell.owner.surface.find_entities_filtered{area=bounds, limit=result_limit, type="entity-ghost", force=logsiticNetwork.force}
+  -- entity-ghost knows items_to_place_this and item_requests (modules)
+  if MaxResults == nil or result_limit > 0 then
+    for _, search_area in pairs(search_areas) do
+      local entities = search_area.surface.find_entities_filtered{area=search_area.bounds, limit=result_limit, type="entity-ghost", force=search_area.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
         local uid = e.unit_number
         if not found_entities[uid] then
           found_entities[uid] = true
-          if is_in_bbox(e.position, bounds) then
+          if is_in_bbox(e.position, search_area.bounds) then
             for _, item_stack in pairs(
               global.Lookup_items_to_place_this[e.ghost_name] or
               get_items_to_place(e.ghost_prototype)
@@ -288,9 +305,13 @@ local function get_ghosts_as_signals(logsiticNetwork)
         result_limit = result_limit - count_unique_entities
         if result_limit <= 0 then break end
       end
+    end
+  end
 
-      -- item-request-proxy holds item_requests (modules) for built entities
-      local entities = cell.owner.surface.find_entities_filtered{area=inner_bounds, limit=result_limit, type="item-request-proxy", force=logsiticNetwork.force}
+  -- item-request-proxy holds item_requests (modules) for built entities
+  if MaxResults == nil or result_limit > 0 then
+    for _, search_area in pairs(search_areas) do
+      local entities = search_area.surface.find_entities_filtered{area=search_area.inner_bounds, limit=result_limit, type="item-request-proxy", force=search_area.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
         local uid = script.register_on_entity_destroyed(e) -- abuse on_entity_destroyed to generate ids directly for proxies
@@ -307,9 +328,13 @@ local function get_ghosts_as_signals(logsiticNetwork)
         result_limit = result_limit - count_unique_entities
         if result_limit <= 0 then break end
       end
+    end
+  end
 
-      -- tile-ghost knows only items_to_place_this
-      local entities = cell.owner.surface.find_entities_filtered{area=inner_bounds, limit=result_limit, type="tile-ghost", force=logsiticNetwork.force}
+  -- tile-ghost knows only items_to_place_this
+  if MaxResults == nil or result_limit > 0 then
+    for _, search_area in pairs(search_areas) do
+      local entities = search_area.surface.find_entities_filtered{area=search_area.inner_bounds, limit=result_limit, type="tile-ghost", force=search_area.force}
       local count_unique_entities = 0
       for _, e in pairs(entities) do
         local uid = e.unit_number
@@ -329,9 +354,8 @@ local function get_ghosts_as_signals(logsiticNetwork)
         result_limit = result_limit - count_unique_entities
         if result_limit <= 0 then break end
       end
-
     end
-  end -- for logsiticNetwork.cells
+  end
 
   -- round signals to next stack size
   -- signal = { type = "item", name = name }, count = 0, index = (signal_index)
@@ -340,7 +364,6 @@ local function get_ghosts_as_signals(logsiticNetwork)
     if InvertSign then round = math.floor end
 
     for _, signal in pairs(signals) do
-      local ceil = math.ceil
       local prototype = game.item_prototypes[signal.signal.name]
       if prototype then
         local stack_size = prototype.stack_size
@@ -378,7 +401,7 @@ function UpdateSensor(ghostScanner)
     ghostScanner.entity.get_control_behavior().parameters = nil
     return
   end
-  ghostScanner.entity.get_control_behavior().parameters = {parameters=signals}
+  ghostScanner.entity.get_control_behavior().parameters = signals
 end
 
 end
