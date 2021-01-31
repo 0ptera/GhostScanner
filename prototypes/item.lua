@@ -3,7 +3,7 @@ data:extend({
     type = "item-subgroup",
     name = "circuit-network-2",
     group = "logistics",
-    order = "g-b"
+    order = data.raw["item-subgroup"]["circuit-network"].order.."2"
   },
   {
     type = "item",

@@ -9,7 +9,7 @@ else
       name = "circuit-network-2",
       icon = "__base__/graphics/technology/circuit-network.png",
       icon_size = 256, icon_mipmaps = 4,
-      prerequisites = {"circuit-network", "advanced-electronics"},
+      prerequisites = {"circuit-network"},
       effects =
       {
         { type = "unlock-recipe", recipe = "ghost-scanner" },
