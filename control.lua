@@ -33,21 +33,26 @@ local Scanner_Name = "ghost-scanner"
 
 ---- MOD SETTINGS ----
 
-local UpdateInterval = settings.global["ghost-scanner_update_interval"].value
-local MaxResults = settings.global["ghost-scanner_max_results"].value
+local UpdateInterval = settings.global["ghost-scanner-update-interval"].value
+local MaxResults = settings.global["ghost-scanner-max-results"].value
 if MaxResults == 0 then MaxResults = nil end
+local ShowHidden = settings.global["ghost-scanner-show-hidden"].value
 local InvertSign = settings.global["ghost-scanner-negative-output"].value
 local RoundToStack = settings.global["ghost-scanner-round2stack"].value
 local ShowCellCount = settings.global["ghost-scanner-cell-count"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
-  if event.setting == "ghost-scanner_update_interval" then
-    UpdateInterval = settings.global["ghost-scanner_update_interval"].value
+  if event.setting == "ghost-scanner-update-interval" then
+    UpdateInterval = settings.global["ghost-scanner-update-interval"].value
     UpdateEventHandlers()
   end
-  if event.setting == "ghost-scanner_max_results" then
-    MaxResults = settings.global["ghost-scanner_max_results"].value
+  if event.setting == "ghost-scanner-max-results" then
+    MaxResults = settings.global["ghost-scanner-max-results"].value
     if MaxResults == 0 then MaxResults = nil end
+  end
+  if event.setting == "ghost-scanner-show-hidden" then
+    ShowHidden = settings.global["ghost-scanner-show-hidden"].value
+    global.Lookup_items_to_place_this = {}
   end
   if event.setting == "ghost-scanner-negative-output" then
     InvertSign = settings.global["ghost-scanner-negative-output"].value
@@ -158,7 +163,19 @@ local signals
 local signal_indexes
 
 local function get_items_to_place(prototype)
-  global.Lookup_items_to_place_this[prototype.name] = prototype.items_to_place_this
+  if ShowHidden then
+    global.Lookup_items_to_place_this[prototype.name] = prototype.items_to_place_this
+  else
+    -- filter items flagged as hidden
+    local items_to_place_filtered = {}
+    for _, v in pairs (prototype.items_to_place_this) do
+      local item = v.name and game.item_prototypes[v.name]
+      if item and item.has_flag("hidden") == false then
+        items_to_place_filtered[#items_to_place_filtered+1] = v
+      end
+    end
+    global.Lookup_items_to_place_this[prototype.name] = items_to_place_filtered
+  end
   return global.Lookup_items_to_place_this[prototype.name]
 end
 

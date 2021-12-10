@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.6.4
+Date: 2021-12-10
+  Features:
+    - option to show hidden items (default off)
+  Changes:
+    - replaced '_' in setting names with '-'
+    - added info images to settings with mouse over information
+---------------------------------------------------------------------------------------------------
 Version: 1.6.3
 Date: 2021-01-31
   Changes:

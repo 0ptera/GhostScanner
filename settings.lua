@@ -1,7 +1,7 @@
 data:extend({
   {
     type = "int-setting",
-    name = "ghost-scanner_update_interval",
+    name = "ghost-scanner-update-interval",
     order = "aa",
     setting_type = "runtime-global",
     default_value = 120,
@@ -10,11 +10,18 @@ data:extend({
   },
   {
     type = "int-setting",
-    name = "ghost-scanner_max_results",
+    name = "ghost-scanner-max-results",
     order = "ab",
     setting_type = "runtime-global",
     default_value = 1000,
     minimum_value = 0,
+  },
+  {
+    type = "bool-setting",
+    name = "ghost-scanner-show-hidden",
+    order = "ac",
+    setting_type = "runtime-global",
+    default_value = false,
   },
   {
     type = "bool-setting",
