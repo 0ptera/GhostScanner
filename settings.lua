@@ -44,4 +44,13 @@ data:extend({
     setting_type = "runtime-global",
     default_value = true,
   },
+  {
+    type = "double-setting",
+    name = "ghost-scanner-area-reduction",
+    order = "bd",
+    setting_type = "runtime-global",
+    default_value = 0.001,
+    minimum_value = 0.0,
+    maximum_value = 0.1,
+  },
 })

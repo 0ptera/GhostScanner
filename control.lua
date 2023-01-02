@@ -40,6 +40,7 @@ local ShowHidden = settings.global["ghost-scanner-show-hidden"].value
 local InvertSign = settings.global["ghost-scanner-negative-output"].value
 local RoundToStack = settings.global["ghost-scanner-round2stack"].value
 local ShowCellCount = settings.global["ghost-scanner-cell-count"].value
+local AreaReduction = settings.global["ghost-scanner-area-reduction"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ghost-scanner-update-interval" then
@@ -62,6 +63,9 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ghost-scanner-cell-count" then
     ShowCellCount = settings.global["ghost-scanner-cell-count"].value
+  end
+  if event.setting == "ghost-scanner-area-reduction" then
+    AreaReduction = settings.global["ghost-scanner-area-reduction"].value
   end
 end)
 
@@ -233,8 +237,8 @@ local function get_ghosts_as_signals(logsiticNetwork)
         right_bottom={ x=pos.x+r, y=pos.y+r }
       }
       local inner_bounds = { -- hack to skip checking if position is inside bounds for tiles
-        left_top={ x=pos.x-r+0.001, y=pos.y-r+0.001, },
-        right_bottom={ x=pos.x+r-0.001, y=pos.y+r-0.001 }
+        left_top={ x=pos.x-r+AreaReduction, y=pos.y-r+AreaReduction },
+        right_bottom={ x=pos.x+r-AreaReduction, y=pos.y+r-AreaReduction }
       }
       search_areas[#search_areas+1] = {
         bounds=bounds,
